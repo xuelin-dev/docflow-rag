@@ -1,0 +1,183 @@
+version: "3.8"
+
+services:
+  # ── Application Services ──────────────────────────────────────────
+  fastapi:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: docflow-fastapi
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      milvus-standalone:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://docflow:docflow@postgres:5432/docflow
+      - REDIS_URL=redis://redis:6379/0
+      - MILVUS_HOST=milvus-standalone
+      - MILVUS_PORT=19530
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ENVIRONMENT=development
+    volumes:
+      - ./backend:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - docflow-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: docflow-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - fastapi
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - docflow-net
+
+  # ── Data Stores ───────────────────────────────────────────────────
+  postgres:
+    image: postgres:16
+    container_name: docflow-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=docflow
+      - POSTGRES_USER=docflow
+      - POSTGRES_PASSWORD=docflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docflow -d docflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - docflow-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: docflow-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - docflow-net
+
+  # ── Milvus Stack ──────────────────────────────────────────────────
+  milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.16
+    container_name: docflow-milvus-etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcddata:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - docflow-net
+
+  milvus-minio:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    container_name: docflow-milvus-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - miniodata:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - docflow-net
+
+  milvus-standalone:
+    image: milvusdb/milvus:v2.4.17
+    container_name: docflow-milvus
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      milvus-etcd:
+        condition: service_healthy
+      milvus-minio:
+        condition: service_healthy
+    environment:
+      - ETCD_ENDPOINTS=milvus-etcd:2379
+      - MINIO_ADDRESS=milvus-minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    volumes:
+      - milvusdata:/var/lib/milvus
+    command: ["milvus", "run", "standalone"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 90s
+    networks:
+      - docflow-net
+
+  # ── Reverse Proxy ─────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: docflow-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - fastapi
+      - frontend
+    networks:
+      - docflow-net
+
+networks:
+  docflow-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  etcddata:
+  miniodata:
+  milvusdata:

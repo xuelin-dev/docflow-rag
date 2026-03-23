@@ -1,0 +1,28 @@
+{
+  "name": "benchmark_v1",
+  "version": "1.0",
+  "description": "Initial benchmark dataset for RAG evaluation — 10 seed samples for development.",
+  "samples": [
+    {
+      "query": "What is the recommended chunking strategy for code documentation?",
+      "expected_answer": "Hierarchical chunking is recommended: small child chunks (~256 tokens) for precise retrieval and larger parent chunks (~1024 tokens) for rich generation context.",
+      "relevant_doc_ids": [],
+      "difficulty": "simple",
+      "domain": "architecture"
+    },
+    {
+      "query": "How does the self-correction loop work in the retrieval engine?",
+      "expected_answer": "The grading node evaluates retrieved document relevance. If relevance falls below threshold, the system rewrites the query and retries retrieval, up to 2 attempts before falling back.",
+      "relevant_doc_ids": [],
+      "difficulty": "complex",
+      "domain": "architecture"
+    },
+    {
+      "query": "Why was Milvus chosen over pgvector for vector storage?",
+      "expected_answer": "Milvus supports billion-scale vectors, hybrid search with both dense and sparse vectors, and advanced indexing (HNSW, IVF_PQ). pgvector only supports HNSW and is limited at scale.",
+      "relevant_doc_ids": [],
+      "difficulty": "simple",
+      "domain": "architecture"
+    }
+  ]
+}
