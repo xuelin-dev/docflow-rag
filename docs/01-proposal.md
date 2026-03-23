@@ -134,34 +134,7 @@
 
 ---
 
-## 5. Alex 的独特优势
-
-### 5.1 七年工程经验的具体体现
-
-**后端架构设计（Java/Spring Boot → FastAPI）：**
-- 2 年 Java 后端 + 2.5 年携程微服务 → FastAPI 的 DI 模式和 async 架构对 Alex 来说是"换了个语法的 Spring Boot"
-- Redis Streams 做异步文档索引队列 → 这是后端工程师的本能反应，AI 背景出身的人不会想到
-- PostgreSQL 存元数据 + Milvus 存向量 → 关系型 vs 向量型的架构分离决策
-
-**全栈能力（React/TS）：**
-- 携程 2.5 年 React + TypeScript 全栈 → P1 的 React 前端不是"Demo 画个框"，是生产级对话界面
-- 源码溯源面板（点击引用跳到原文段落）→ 这是前端工程能力的体现
-- 流式渲染（WebSocket streaming）→ Alex 有实际生产级流式 UI 经验
-
-**工程化思维：**
-- Redis 语义缓存不是"因为看教程所以用 Redis"，是 LLM API 成本优化的工程决策
-- Docker Compose 多服务编排 → clone repo、一条命令启动完整系统
-- CI/CD（GitHub Actions）→ 生产级项目的标配
-
-### 5.2 OpenClaw 多 Agent 实战经验
-
-- Alex 深度使用 OpenClaw 多 Agent 系统（Scout/Dojo/Cinema/Pulse 等 7 个 Agent 协作）
-- 对 MCP 协议有实际使用经验，P1 的 MCP Server 设计不是纸上谈兵
-- P1 的 MCP 接口设计来源于该多 Agent 协作系统的实战经验
-
----
-
-## 6. 项目风险
+## 5. 项目风险
 
 ### 已知风险 + 应对策略
 
